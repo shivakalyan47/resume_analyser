@@ -38,6 +38,7 @@ public class AnalyzerController {
         // Pre-fill model attributes to avoid Thymeleaf errors
         model.addAttribute("analyzed", false);
         model.addAttribute("result", new ResumeAnalysisResult());
+        model.addAttribute("isPasteResume", false); // Default to file upload tab
         return "index";
     }
 
@@ -52,6 +53,7 @@ public class AnalyzerController {
             Model model) {
         
         String extractedResumeText = "";
+        boolean isPaste = (resumeFile == null || resumeFile.isEmpty());
 
         try {
             // Check if file is uploaded
@@ -63,6 +65,7 @@ public class AnalyzerController {
                 model.addAttribute("error", "Please provide a resume by either uploading a file or pasting the text.");
                 model.addAttribute("analyzed", false);
                 model.addAttribute("result", new ResumeAnalysisResult());
+                model.addAttribute("isPasteResume", isPaste);
                 return "index";
             }
 
@@ -73,20 +76,23 @@ public class AnalyzerController {
             model.addAttribute("result", result);
             model.addAttribute("analyzed", true);
             model.addAttribute("jobDescription", jobDescription);
-            model.addAttribute("isPasteResume", resumeFile == null || resumeFile.isEmpty());
+            model.addAttribute("isPasteResume", isPaste);
 
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
             model.addAttribute("analyzed", false);
             model.addAttribute("result", new ResumeAnalysisResult());
+            model.addAttribute("isPasteResume", isPaste);
         } catch (IOException e) {
             model.addAttribute("error", "Failed to parse the uploaded file. " + e.getMessage());
             model.addAttribute("analyzed", false);
             model.addAttribute("result", new ResumeAnalysisResult());
+            model.addAttribute("isPasteResume", isPaste);
         } catch (Exception e) {
             model.addAttribute("error", "An unexpected error occurred during analysis: " + e.getMessage());
             model.addAttribute("analyzed", false);
             model.addAttribute("result", new ResumeAnalysisResult());
+            model.addAttribute("isPasteResume", isPaste);
         }
 
         return "index";
