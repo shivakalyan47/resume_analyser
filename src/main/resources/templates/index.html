@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered ATS Resume Analyzer & Score Scouter</title>
+    <meta name="description" content="Evaluate your resume against job descriptions, calculate ATS scoring index, identify skill deficits, and receive modern recommendations.">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+    <!-- Premium Navigation Bar -->
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">
+                <div class="logo-icon">RA</div>
+                <span class="logo-text">RESUME.AI</span>
+                <span class="logo-badge">ATS ANALYZER</span>
+            </a>
+            <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">
+                POWERED BY JAVA 25 & SPRING BOOT
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main>
+        
+        <!-- Error Alerts -->
+        <div class="alert-error" th:if="${error}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span th:text="${error}">An error occurred processing your resume.</span>
+        </div>
+
+        <!-- Section 1: Inputs Grid (Always visible so they can quickly re-analyze) -->
+        <div class="glass-card" style="margin-bottom: 2.5rem;">
+            <div class="card-title">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Configure Analysis Engine
+            </div>
+
+            <form id="analyzerForm" th:action="@{/analyze}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="inputMethod" id="inputMethod" th:value="${isPasteResume} ? 'paste' : 'upload'">
+
+                <div class="grid-input">
+                    <!-- Column Left: Job Description -->
+                    <div class="form-group">
+                        <label class="form-label" for="jobDescription">Target Job Description (Paste Here to Match Keywords)</label>
+                        <textarea class="textarea-custom" name="jobDescription" id="jobDescription" placeholder="Paste the job requirements, duties, and qualifications here to run automated skill gap detection..." th:text="${jobDescription}"></textarea>
+                    </div>
+
+                    <!-- Column Right: Resume Input -->
+                    <div>
+                        <label class="form-label">Provide Your Resume File or Raw Content</label>
+                        
+                        <!-- Toggle Tab Control -->
+                        <div class="tab-container">
+                            <button type="button" class="tab-btn" data-tab="upload" th:classappend="${!isPasteResume} ? 'active' : ''">Upload Resume Document</button>
+                            <button type="button" class="tab-btn" data-tab="paste" th:classappend="${isPasteResume} ? 'active' : ''">Paste Plain Text</button>
+                        </div>
+
+                        <!-- Tab Panel: File Upload -->
+                        <div class="tab-panel" id="uploadPanel" th:classappend="${!isPasteResume} ? 'active' : ''">
+                            <div class="upload-zone" id="uploadZone">
+                                <div class="upload-icon">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <div class="upload-text">Drag & drop your Resume file here</div>
+                                <div class="upload-subtext">Supports PDF & TXT documents (Max 5MB)</div>
+                                <input type="file" name="resumeFile" id="resumeFileInput" accept=".pdf,.txt" th:required="${!isPasteResume}">
+                            </div>
+                            
+                            <div class="file-status" id="fileStatus" style="margin-top: 1rem;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                                <span>Selected File: <strong id="fileName">resume.pdf</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- Tab Panel: Paste Text -->
+                        <div class="tab-panel" id="pastePanel" th:classappend="${isPasteResume} ? 'active' : ''">
+                            <div class="form-group">
+                                <textarea class="textarea-custom" name="resumeText" id="resumeTextarea" style="height: 250px;" placeholder="Paste the full, raw text contents of your resume here..." th:text="${isPasteResume} ? ${result?.parsedResumeText} : ''" th:required="${isPasteResume}"></textarea>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 2rem;">
+                            <button type="submit" class="btn-primary">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                </svg>
+                                EXECUTE REAL-TIME ANALYSIS
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Section 2: Dashboard Results (Only visible if analyzed == true) -->
+        <div id="analysisDashboard" th:if="${analyzed}" class="dashboard-grid">
+            
+            <!-- Sidebar: Scores & Contact Card -->
+            <div class="sidebar-summary">
+                
+                <!-- ATS Score Card -->
+                <div class="glass-card" style="text-align: center;">
+                    <div class="card-title" style="justify-content: center;">
+                        ATS Match Index
+                    </div>
+                    
+                    <!-- Circular SVG Gauge -->
+                    <div class="gauge-container">
+                        <svg class="gauge-svg" viewBox="0 0 200 200">
+                            <defs>
+                                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#8b5cf6" />
+                                    <stop offset="100%" stop-color="#06b6d4" />
+                                </linearGradient>
+                            </defs>
+                            <circle class="gauge-bg" cx="100" cy="100" r="90"></circle>
+                            <circle class="gauge-fill" cx="100" cy="100" r="90"></circle>
+                        </svg>
+                        <div class="gauge-value" id="atsScoreValue" th:data-score="${result.atsScore}">
+                            <div class="gauge-number"><span id="atsNumberDisplay">0</span><span class="gauge-pct">%</span></div>
+                            <div class="gauge-label">ATS Rank</div>
+                        </div>
+                    </div>
+
+                    <!-- Score classification tag -->
+                    <div style="margin-top: 1rem; font-weight: 700; font-size: 1.1rem; text-shadow: 0 0 10px rgba(255,255,255,0.1);">
+                        <span th:if="${result.atsScore >= 85}" style="color: var(--color-success);">EXCELLENT FIT</span>
+                        <span th:if="${result.atsScore >= 60 and result.atsScore < 85}" style="color: var(--color-warning);">MODERATE MATCH</span>
+                        <span th:if="${result.atsScore < 60}" style="color: var(--color-danger);">CRITICAL DEFICIT</span>
+                    </div>
+                </div>
+
+                <!-- Sub-score categories progress -->
+                <div class="glass-card">
+                    <div class="card-title">Metric Scoring Breakdown</div>
+                    
+                    <div class="metric-list">
+                        <!-- Keywords Match Subscore -->
+                        <div class="metric-item">
+                            <div class="metric-header">
+                                <span class="metric-name">Keyword Accuracy</span>
+                                <span class="metric-val" th:text="${result.keywordScore} + '%'">0%</span>
+                            </div>
+                            <div class="metric-bar-bg">
+                                <div class="metric-bar-fill" th:data-value="${result.keywordScore}"></div>
+                            </div>
+                        </div>
+
+                        <!-- Section Completeness Subscore -->
+                        <div class="metric-item">
+                            <div class="metric-header">
+                                <span class="metric-name">Section Integrity</span>
+                                <span class="metric-val" th:text="${result.sectionScore} + '%'">0%</span>
+                            </div>
+                            <div class="metric-bar-bg">
+                                <div class="metric-bar-fill" th:data-value="${result.sectionScore}"></div>
+                            </div>
+                        </div>
+
+                        <!-- Formatting Subscore -->
+                        <div class="metric-item">
+                            <div class="metric-header">
+                                <span class="metric-name">Formatting & Contact</span>
+                                <span class="metric-val" th:text="${result.formattingScore} + '%'">0%</span>
+                            </div>
+                            <div class="metric-bar-bg">
+                                <div class="metric-bar-fill" th:data-value="${result.formattingScore}"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact & Bio profile extraction card -->
+                <div class="glass-card">
+                    <div class="card-title">Extracted Identity</div>
+                    
+                    <div class="contact-card">
+                        <!-- Email -->
+                        <div class="contact-row" th:classappend="${result.extractedEmail == null} ? 'empty' : ''">
+                            <div class="contact-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </div>
+                            <div class="contact-info-text">
+                                <span th:if="${result.extractedEmail != null}" th:text="${result.extractedEmail}">email@example.com</span>
+                                <span th:if="${result.extractedEmail == null}">No Email Detected</span>
+                            </div>
+                        </div>
+
+                        <!-- Phone -->
+                        <div class="contact-row" th:classappend="${result.extractedPhone == null} ? 'empty' : ''">
+                            <div class="contact-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                            </div>
+                            <div class="contact-info-text">
+                                <span th:if="${result.extractedPhone != null}" th:text="${result.extractedPhone}">+1 (555) 123-4567</span>
+                                <span th:if="${result.extractedPhone == null}">No Phone Detected</span>
+                            </div>
+                        </div>
+
+                        <!-- LinkedIn link -->
+                        <div class="contact-row" th:classappend="${!result.extractedLinks.containsKey('LinkedIn')} ? 'empty' : ''">
+                            <div class="contact-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                                    <rect x="2" y="9" width="4" height="12"></rect>
+                                    <circle cx="4" cy="4" r="2"></circle>
+                                </svg>
+                            </div>
+                            <div class="contact-info-text">
+                                <a th:if="${result.extractedLinks.containsKey('LinkedIn')}" th:href="${result.extractedLinks.get('LinkedIn')}" target="_blank">LinkedIn Profile</a>
+                                <span th:if="${!result.extractedLinks.containsKey('LinkedIn')}">LinkedIn Link Missing</span>
+                            </div>
+                        </div>
+
+                        <!-- GitHub Link -->
+                        <div class="contact-row" th:classappend="${!result.extractedLinks.containsKey('GitHub')} ? 'empty' : ''">
+                            <div class="contact-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                                </svg>
+                            </div>
+                            <div class="contact-info-text">
+                                <a th:if="${result.extractedLinks.containsKey('GitHub')}" th:href="${result.extractedLinks.get('GitHub')}" target="_blank">GitHub Portfolio</a>
+                                <span th:if="${!result.extractedLinks.containsKey('GitHub')}">GitHub Link Missing</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Panel: Tab Content -->
+            <div class="glass-card">
+                
+                <!-- Results Section Tab Navigation -->
+                <div class="results-tabs">
+                    <button class="results-tab-btn active" data-panel="keywordsPanel">Keyword Scans</button>
+                    <button class="results-tab-btn" data-panel="sectionsPanel">Section integrity</button>
+                    <button class="results-tab-btn" data-panel="suggestionsPanel">Actionable Advice</button>
+                    <button class="results-tab-btn" data-panel="rawTextPanel">Parsed Resume Text</button>
+                </div>
+
+                <!-- Tab 1: Keyword Analysis -->
+                <div class="results-panel active" id="keywordsPanel">
+                    <div style="margin-bottom: 2rem;">
+                        <p style="color: var(--text-muted); font-size: 0.98rem; margin-bottom: 1rem;">
+                            Scanning your resume for critical competencies matching your target description. Overlap checks are executed inside localized word scopes to verify precise expertise.
+                        </p>
+                        <div style="display: flex; gap: 2.5rem; margin-top: 1rem; border-top: 1px solid var(--border-glass); padding-top: 1rem;">
+                            <div>
+                                <div style="font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; color: var(--color-success);" th:text="${result.matchedKeywords.size()}">0</div>
+                                <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Skills Matched</div>
+                            </div>
+                            <div>
+                                <div style="font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; color: ${result.missingKeywords.isEmpty()} ? var(--color-success) : var(--color-danger);" th:text="${result.missingKeywords.size()}">0</div>
+                                <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Keywords Deficit</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="keywords-grid">
+                        <!-- Matched Keywords column -->
+                        <div>
+                            <div class="kw-column-title" style="color: var(--color-success);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Matched Keywords
+                            </div>
+                            <div class="badge-container">
+                                <div th:each="kw : ${result.matchedKeywords}" class="badge badge-matched">
+                                    <span th:text="${kw}">Java</span>
+                                </div>
+                                <div th:if="${result.matchedKeywords.isEmpty()}" class="badge-empty">
+                                    No direct keyword overlap was matched in your profile.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Missing Keywords column -->
+                        <div>
+                            <div class="kw-column-title" style="color: var(--color-danger);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                Deficit Keywords (Missing)
+                            </div>
+                            <div class="badge-container">
+                                <div th:each="kw : ${result.missingKeywords}" class="badge badge-missing">
+                                    <span th:text="${kw}">Spring Boot</span>
+                                </div>
+                                <div th:if="${result.missingKeywords.isEmpty()}" class="badge-empty" style="color: var(--color-success);">
+                                    Perfect coverage! No keyword deficits detected.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Section Completeness -->
+                <div class="results-panel" id="sectionsPanel">
+                    <p style="color: var(--text-muted); font-size: 0.98rem; margin-bottom: 2rem;">
+                        ATS parsing engines rely on explicit headers to categorize your experience levels. Missing standard titles can throw off automated candidate profiles.
+                    </p>
+                    
+                    <div class="section-check-list">
+                        <!-- Checked Sections -->
+                        <div th:each="section : ${result.foundSections}" class="section-check-item">
+                            <div class="section-check-info">
+                                <div style="color: var(--color-success);">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                    </svg>
+                                </div>
+                                <span class="section-check-title" th:text="${section}">Experience</span>
+                            </div>
+                            <span class="section-check-status status-verified">Verified</span>
+                        </div>
+
+                        <!-- Missing Sections -->
+                        <div th:each="section : ${result.missingSections}" class="section-check-item" style="opacity: 0.65;">
+                            <div class="section-check-info">
+                                <div style="color: var(--color-danger);">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                </div>
+                                <span class="section-check-title" th:text="${section}">Certifications</span>
+                            </div>
+                            <span class="section-check-status status-absent">Not Found</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Actionable Suggestions -->
+                <div class="results-panel" id="suggestionsPanel">
+                    <p style="color: var(--text-muted); font-size: 0.98rem; margin-bottom: 2rem;">
+                        Real-time intelligence advice curated to adjust your content representation index, maximizing potential match probability.
+                    </p>
+
+                    <!-- Suggestions Categories -->
+                    <div class="sug-category" th:each="entry : ${result.suggestions}" th:if="${!entry.value.isEmpty()}">
+                        <div class="sug-category-title">
+                            <span th:if="${entry.key == 'keywords'}">Keywords Alignment Advice</span>
+                            <span th:if="${entry.key == 'sections'}">Section Layout Tweaks</span>
+                            <span th:if="${entry.key == 'contact'}">Contact details Verification</span>
+                            <span th:if="${entry.key == 'formatting'}">Word Density & Presentation</span>
+                        </div>
+                        
+                        <div class="sug-list">
+                            <div th:each="sugText : ${entry.value}" class="sug-item">
+                                <div class="sug-item-bullet" th:classappend="${entry.key}">
+                                    <svg th:if="${entry.key == 'keywords'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    <svg th:if="${entry.key == 'sections'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                                    <svg th:if="${entry.key == 'contact'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path></svg>
+                                    <svg th:if="${entry.key == 'formatting'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                                </div>
+                                <div class="sug-item-text" th:text="${sugText}">Detailed suggestion description placeholder.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Parsed Resume Text -->
+                <div class="results-panel" id="rawTextPanel">
+                    <p style="color: var(--text-muted); font-size: 0.98rem; margin-bottom: 1.5rem;">
+                        This is the raw character stream parsed by our PDFBox extraction engine. ATS systems "see" your resume exactly like this. Ensure there are no corrupted symbols or merged word strings.
+                    </p>
+                    <div class="text-preview-container" th:text="${result.parsedResumeText}">Raw parsed resume text stream goes here...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Glowing Loading Screen -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-box">
+            <div class="spinner-outer"></div>
+            <div class="spinner-inner"></div>
+        </div>
+        <div class="loading-text">ATS SCORING ENGINE ACTIVE</div>
+        <div class="loading-subtext" id="subtextLoader">Initializing secure parser module...</div>
+    </div>
+
+    <!-- Page Footer -->
+    <footer>
+        <p>&copy; 2026 AI-Powered ATS Resume Scouter Dashboard. Created with Spring Boot & Java 25.</p>
+        <p style="margin-top: 0.5rem; font-size: 0.8rem;">
+            Matches keywords, calculates compliance, extracts details, parses document buffers, and suggests content optimization.
+        </p>
+    </footer>
+
+    <script th:src="@{/js/main.js}"></script>
+</body>
+</html>
