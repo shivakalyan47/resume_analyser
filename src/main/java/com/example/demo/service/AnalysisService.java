@@ -105,11 +105,11 @@ public class AnalysisService {
 
         boolean hasLinkedIn = linkedinMatcher.find();
         if (hasLinkedIn) {
-            result.getExtractedLinks().put("LinkedIn", linkedinMatcher.group());
+            result.getExtractedLinks().put("LinkedIn", formatUrl(linkedinMatcher.group()));
         }
         boolean hasGitHub = githubMatcher.find();
         if (hasGitHub) {
-            result.getExtractedLinks().put("GitHub", githubMatcher.group());
+            result.getExtractedLinks().put("GitHub", formatUrl(githubMatcher.group()));
         }
 
         if (hasLinkedIn || hasGitHub) {
@@ -136,6 +136,20 @@ public class AnalysisService {
         }
 
         result.setFormattingScore(score);
+    }
+
+    /**
+     * Formats extracted URLs to ensure they contain a scheme.
+     */
+    private String formatUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        url = url.trim();
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return "https://" + url;
+        }
+        return url;
     }
 
     /**
