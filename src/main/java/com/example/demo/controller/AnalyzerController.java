@@ -37,6 +37,7 @@ public class AnalyzerController {
     public String index(Model model) {
         // Pre-fill model attributes to avoid Thymeleaf errors
         model.addAttribute("analyzed", false);
+        model.addAttribute("result", new ResumeAnalysisResult());
         return "index";
     }
 
@@ -61,6 +62,7 @@ public class AnalyzerController {
             } else {
                 model.addAttribute("error", "Please provide a resume by either uploading a file or pasting the text.");
                 model.addAttribute("analyzed", false);
+                model.addAttribute("result", new ResumeAnalysisResult());
                 return "index";
             }
 
@@ -76,12 +78,15 @@ public class AnalyzerController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
             model.addAttribute("analyzed", false);
+            model.addAttribute("result", new ResumeAnalysisResult());
         } catch (IOException e) {
             model.addAttribute("error", "Failed to parse the uploaded file. " + e.getMessage());
             model.addAttribute("analyzed", false);
+            model.addAttribute("result", new ResumeAnalysisResult());
         } catch (Exception e) {
             model.addAttribute("error", "An unexpected error occurred during analysis: " + e.getMessage());
             model.addAttribute("analyzed", false);
+            model.addAttribute("result", new ResumeAnalysisResult());
         }
 
         return "index";
