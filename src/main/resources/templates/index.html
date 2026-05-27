@@ -277,7 +277,7 @@
                                 <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Skills Matched</div>
                             </div>
                             <div>
-                                <div style="font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; color: ${result.missingKeywords.isEmpty()} ? var(--color-success) : var(--color-danger);" th:text="${result.missingKeywords.size()}">0</div>
+                                <div th:style="'font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700; color: ' + (${result.missingKeywords.isEmpty()} ? 'var(--color-success)' : 'var(--color-danger)') + ';'" th:text="${result.missingKeywords.size()}">0</div>
                                 <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Keywords Deficit</div>
                             </div>
                         </div>
